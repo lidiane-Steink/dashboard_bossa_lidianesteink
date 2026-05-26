@@ -3642,14 +3642,26 @@ async function downloadAndRender() {
     const { data: blob, error } = await sb.storage
       .from('dashboard-data')
       .download('summary.json');
-    if (error) throw new Error(error.message);
+    if (error) {
+      // Mensagem clara conforme tipo de erro
+      const msg = (error.message || '').toLowerCase();
+      if (msg.includes('not found') || msg.includes('object') || msg.includes('404')) {
+        showLogin('Login OK, mas o arquivo summary.json ainda não foi gerado. Rode o pipeline primeiro.');
+        return;
+      }
+      if (msg.includes('jwt') || msg.includes('expired') || msg.includes('unauth')) {
+        await sb.auth.signOut();
+        showLogin('Sessão expirada. Faça login novamente.');
+        return;
+      }
+      showLogin('Erro ao baixar dados: ' + error.message);
+      return;
+    }
     const text = await blob.text();
     DATA = JSON.parse(text);
     await startDashboard();
   } catch (err) {
-    // Sessão pode ter expirado — faz logout e volta ao login
-    await sb.auth.signOut();
-    showLogin('Sessão expirada. Faça login novamente.');
+    showLogin('Erro inesperado: ' + (err.message || err));
   }
 }
 
