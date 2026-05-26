@@ -8,7 +8,13 @@ RD_CLIENT_ID = os.getenv("RD_CLIENT_ID")
 RD_CLIENT_SECRET = os.getenv("RD_CLIENT_SECRET")
 RD_REFRESH_TOKEN = os.getenv("RD_REFRESH_TOKEN")
 RD_PRIVATE_TOKEN = os.getenv("RD_PRIVATE_TOKEN")
-RD_CRM_TOKEN = os.getenv("RD_CRM_TOKEN")
+RD_CRM_TOKEN = os.getenv("RD_CRM_TOKEN")  # legado — não usado no Ouro do Gege
+
+# SprintHub CRM
+SPRINTHUB_API_TOKEN = os.getenv("SPRINTHUB_API_TOKEN")
+SPRINTHUB_INSTANCE  = os.getenv("SPRINTHUB_INSTANCE")   # nome da instância (ex: "ourodogege")
+# JSON mapeando crm_column ID → nome da etapa. Ex: '{"159":"Contato engajado","160":"Modelo Escolhido"}'
+SPRINTHUB_STAGE_MAP = os.getenv("SPRINTHUB_STAGE_MAP", "{}")
 
 # Google Ads
 GOOGLE_ADS_DEVELOPER_TOKEN = os.getenv("GOOGLE_ADS_DEVELOPER_TOKEN")

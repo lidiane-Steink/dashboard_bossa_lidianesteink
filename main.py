@@ -3,7 +3,7 @@ import sys
 sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
 
-from collectors import rdstation, rdcrm, ads_sheets, ga4, google_ads, meta_ads
+from collectors import rdstation, sprinthub, ads_sheets, ga4, google_ads, meta_ads
 from sheets import writer
 from datetime import datetime
 
@@ -22,15 +22,15 @@ def run():
     except Exception as e:
         print(f"  ERRO RD Station: {e}")
 
-    # RD CRM
-    print("\n[2/4] RD Station CRM")
+    # SprintHub CRM
+    print("\n[2/4] SprintHub CRM")
     try:
-        crm_data = rdcrm.get_all_crm_data()
+        crm_data = sprinthub.get_all_crm_data()
         writer.write_sheet("crm_deals", crm_data["deals"])
         writer.write_sheet("crm_atividades", crm_data["atividades"])
         writer.write_sheet("crm_tarefas", crm_data["tarefas"])
     except Exception as e:
-        print(f"  ERRO RD CRM: {e}")
+        print(f"  ERRO SprintHub CRM: {e}")
 
     # Google Analytics 4
     print("\n[3/6] Google Analytics 4")

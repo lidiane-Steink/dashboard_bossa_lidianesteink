@@ -296,31 +296,16 @@ def parse_date_to_day(date_str):
 
 
 STAGE_NORMALIZE = {
-    # ── Funil atual ──────────────────────────────────────────────────────────
-    'entrada de lead':                     'Entrada de Lead',
-    'tentativa de conexão':                'Tentativa de Conexão',
-    'tentativa de conexao':                'Tentativa de Conexão',
-    'lead respondente':                    'Lead Respondente',
-    'pré-qualificado':                     'Pré-qualificado',
-    'pre-qualificado':                     'Pré-qualificado',
-    'pré qualificado':                     'Pré-qualificado',
-    'pre qualificado':                     'Pré-qualificado',
-    'reunião pdf':                         'Reunião PDF',
-    'reuniao pdf':                         'Reunião PDF',
-    'apresentação do business plan':       'Apresentação do Business Plan',
-    'apresentacao do business plan':       'Apresentação do Business Plan',
-    'envio de cof':                        'Envio de COF',
-    'workshop':                            'Workshop',
-    'aprovação final':                     'Aprovação Final',
-    'aprovacao final':                     'Aprovação Final',
-    # ── Etapas legadas (dados históricos) ────────────────────────────────────
-    'contato inicial':                     'Contato Inicial',
-    'nutrição 1':                          'Nutrição 1',
-    'nutricao 1':                          'Nutrição 1',
-    'nutrição 2':                          'Nutrição 2',
-    'nutricao 2':                          'Nutrição 2',
-    # ── Sistema ──────────────────────────────────────────────────────────────
-    'etapa descarte':                      'Etapa Descarte',
+    # ── Funil Ouro do Gege ────────────────────────────────────────────────────
+    'contato engajado':                    'Contato Engajado',
+    'modelo escolhido':                    'Modelo Escolhido',
+    'interesse em visitar a loja':         'Interesse em Visitar a Loja',
+    'interesse em visitar':                'Interesse em Visitar a Loja',
+    'visitou e nao comprou':               'Visitou e não Comprou',
+    'visitou e não comprou':               'Visitou e não Comprou',
+    'visitou nao comprou':                 'Visitou e não Comprou',
+    'comprou':                             'Comprou',
+    'perdido':                             'Perdido',
 }
 
 
@@ -551,12 +536,12 @@ def aggregate_crm(deals, leads=None):
 
     # Funil de ativos na ordem correta do pipeline
     PIPELINE_ORDER = [
-        # Funil atual
-        'entrada de lead', 'tentativa de conexão', 'lead respondente',
-        'pré-qualificado', 'reunião pdf', 'apresentação do business plan',
-        'envio de cof', 'workshop', 'aprovação final',
-        # Etapas legadas (dados históricos — ficam ao final)
-        'contato inicial', 'nutrição 1', 'nutrição 2',
+        'contato engajado',
+        'modelo escolhido',
+        'interesse em visitar a loja',
+        'visitou e não comprou',
+        'comprou',
+        'perdido',
     ]
     def stage_sort_key(name):
         nl = name.lower()

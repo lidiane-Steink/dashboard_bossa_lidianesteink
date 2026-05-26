@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard Expansão CDC — Clínica da Cidade</title>
+<title>Dashboard Marketing — Ouro do Gege</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect x='6' y='4' width='52' height='56' rx='5' fill='%23B3D4F0' stroke='%23000' stroke-width='3'/><rect x='38' y='10' width='14' height='5' rx='1.5' fill='%23FFFFFF' stroke='%23000' stroke-width='2'/><circle cx='22' cy='22' r='9' fill='%23E74C3C' stroke='%23000' stroke-width='2'/><path d='M22 22 L22 13 A9 9 0 0 1 31 22 Z' fill='%2327AE60'/><line x1='34' y1='30' x2='52' y2='30' stroke='%23000' stroke-width='2'/><line x1='34' y1='36' x2='46' y2='36' stroke='%23000' stroke-width='2'/><rect x='12' y='42' width='8' height='12' fill='%23F4D35E' stroke='%23000' stroke-width='2'/><rect x='22' y='38' width='8' height='16' fill='%23F4A24A' stroke='%23000' stroke-width='2'/><rect x='32' y='34' width='8' height='20' fill='%23E67E22' stroke='%23000' stroke-width='2'/><rect x='42' y='40' width='8' height='14' fill='%23D35400' stroke='%23000' stroke-width='2'/></svg>">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -862,7 +862,7 @@
   <div class="login-box">
     <div class="login-logo">🔒</div>
     <h2>Dashboard Marketing</h2>
-    <div class="login-sub">Clínica da Cidade — Expansão CDC</div>
+    <div class="login-sub">Ouro do Gege</div>
     <form id="login-form" autocomplete="off">
       <input type="password" id="login-pwd" placeholder="Digite a senha" autofocus required>
       <button type="submit" id="login-btn">Entrar</button>
@@ -881,8 +881,8 @@
 <!-- SIDEBAR -->
 <aside id="sidebar">
   <div class="logo">
-    <h2>Clínica da Cidade</h2>
-    <p>Dashboard Expansão CDC</p>
+    <h2>Ouro do Gege</h2>
+    <p>Dashboard Marketing</p>
   </div>
   <nav>
     <a href="#" class="active" data-section="executivo">
@@ -934,7 +934,7 @@
         <line x1="2" y1="17" x2="20" y2="17"/>
       </svg>
     </button>
-    <h1>Dashboard Marketing — Expansão CDC</h1>
+    <h1>Dashboard Marketing — Ouro do Gege</h1>
     <div class="filter-group">
       <label>Atalho</label>
       <select id="filter-preset" onchange="applyPreset()">
@@ -2032,18 +2032,12 @@ function renderRelatorio() {
 
 // ─── SECTION: EXECUTIVO ───────────────────────────────────────────────────────
 const FUNNEL_ORDER = [
-  // Funil atual
-  'entrada de lead',
-  'tentativa de conexão', 'tentativa de conexao',
-  'lead respondente',
-  'pré-qualificado', 'pre-qualificado',
-  'reunião pdf', 'reuniao pdf', 'reunião de pdf',
-  'apresentação do business plan', 'apresentacao do business plan',
-  'envio de cof',
-  'workshop',
-  'aprovação final', 'aprovacao final',
-  // Etapas legadas (dados históricos — aparecem ao final)
-  'contato inicial', 'nutrição 1', 'nutricao 1', 'nutrição 2', 'nutricao 2',
+  'contato engajado',
+  'modelo escolhido',
+  'interesse em visitar a loja', 'interesse em visitar',
+  'visitou e não comprou', 'visitou e nao comprou',
+  'comprou',
+  'perdido',
 ];
 
 function funnelSortIndex(etapa) {
@@ -2255,14 +2249,11 @@ function renderExecutivo() {
   // Conta quantos deals (criados no período) passaram em cada etapa.
   // Um deal passa por uma etapa se sua etapa atual >= aquela etapa no pipeline.
   const FUNIL_STAGES = [
-    'Entrada de Lead',
-    'Tentativa de Conexão',
-    'Lead Respondente',
-    'Pré-qualificado',
-    'Reunião PDF',
-    'Apresentação do Business Plan',
-    'Envio de COF',
-    'Workshop',
+    'Contato Engajado',
+    'Modelo Escolhido',
+    'Interesse em Visitar a Loja',
+    'Visitou e não Comprou',
+    'Comprou',
   ];
   const stageIdxOf = (etapa) => {
     const el = (etapa || '').toLowerCase().trim();
@@ -3615,9 +3606,9 @@ function renderPrevisibilidade() {
 
 // ─── SUPABASE: configuração ───────────────────────────────────────────────────
 // PREENCHA com os valores do seu projeto em: supabase.com → Project Settings → API
-const SUPABASE_URL  = 'https://saoigiuykmubnqlkjvpx.supabase.co';
-const SUPABASE_KEY  = 'sb_publishable_lKMUJKoVsFkrm9WDxrsT0g_i-h7AJ6H';
-const DASH_EMAIL    = 'dashboard@clinicadacidade.com.br'; // e-mail do usuário criado no Supabase Auth
+const SUPABASE_URL  = 'https://cywxwudiippjghnliwdh.supabase.co';
+const SUPABASE_KEY  = 'sb_publishable_oWuJNeW0K1WWR6tbcsJcxg_pw6Savsw';
+const DASH_EMAIL    = 'lidiane@ascemarketing.com.br'; // e-mail do usuário criado no Supabase Auth
 
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -3717,8 +3708,8 @@ loadData();
 <div id="mob-drawer">
   <div class="mob-drawer-header">
     <div>
-      <h2>Clínica da Cidade</h2>
-      <p>Dashboard Expansão CDC</p>
+      <h2>Ouro do Gege</h2>
+      <p>Dashboard Marketing</p>
     </div>
     <button id="mob-drawer-close" onclick="closeMobDrawer()">✕</button>
   </div>

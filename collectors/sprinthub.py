@@ -1,0 +1,130 @@
+import json
+import time
+import concurrent.futures
+
+import requests
+
+import config
+
+BASE_URL = "https://sprinthub-api-master.sprinthub.app"
+MAX_WORKERS = 4
+PAGE_SIZE = 200
+
+# Mapeamento crm_column ID (número) → nome da etapa do funil.
+# Preencha os IDs corretos após verificar no SprintHub:
+#   Configurações → CRM → Colunas (anote o ID de cada coluna)
+# Enquanto não preencher, etapas aparecem como "coluna_159" no dashboard.
+STAGE_MAP: dict[str, str] = json.loads(config.SPRINTHUB_STAGE_MAP or "{}")
+
+
+def _headers() -> dict:
+    return {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {config.SPRINTHUB_API_TOKEN}",
+        "apitoken": config.SPRINTHUB_API_TOKEN,
+    }
+
+
+def _base_params() -> dict:
+    return {"i": config.SPRINTHUB_INSTANCE}
+
+
+def _resolve_stage(opp: dict) -> str:
+    """Retorna o nome da etapa: Comprou, Perdido, ou nome mapeado do crm_column."""
+    if opp.get("gain_date") or opp.get("status") == "won":
+        return "Comprou"
+    if opp.get("lost_date") or opp.get("status") == "lost":
+        return "Perdido"
+    col_id = str(opp.get("crm_column", ""))
+    return STAGE_MAP.get(col_id, f"coluna_{col_id}") if col_id else "sem etapa"
+
+
+def _get_leads_page(page: int) -> dict:
+    params = {**_base_params(), "allFields": "1", "page": page, "limit": PAGE_SIZE}
+    resp = requests.get(f"{BASE_URL}/leads", headers=_headers(), params=params, timeout=30)
+    resp.raise_for_status()
+    return resp.json().get("data", {})
+
+
+def get_leads() -> list:
+    print("  Coletando leads do SprintHub...")
+    all_leads = []
+    page = 1
+    while True:
+        data = _get_leads_page(page)
+        batch = data.get("leads", [])
+        if not batch:
+            break
+        all_leads.extend(batch)
+        total = data.get("total", 0)
+        print(f"    {len(all_leads)}/{total} leads coletados...")
+        if len(all_leads) >= total:
+            break
+        page += 1
+        time.sleep(0.2)
+    print(f"  Total de leads: {len(all_leads)}")
+    return all_leads
+
+
+def _get_opportunities(lead_id: int) -> list:
+    try:
+        resp = requests.get(
+            f"{BASE_URL}/listopportunitysleadcomplete/{lead_id}",
+            headers=_headers(),
+            params=_base_params(),
+            timeout=30,
+        )
+        resp.raise_for_status()
+        result = resp.json()
+        return result if isinstance(result, list) else []
+    except Exception:
+        return []
+
+
+def get_deals() -> list:
+    print("Coletando oportunidades (deals) do SprintHub...")
+    leads = get_leads()
+    lead_by_id = {lead.get("id"): lead for lead in leads}
+    lead_ids = list(lead_by_id.keys())
+
+    print(f"  Buscando oportunidades para {len(lead_ids)} leads (workers={MAX_WORKERS})...")
+    deals = []
+    done = 0
+    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = {executor.submit(_get_opportunities, lid): lid for lid in lead_ids}
+        for future in concurrent.futures.as_completed(futures):
+            lead_id = futures[future]
+            lead = lead_by_id.get(lead_id, {})
+            for opp in future.result():
+                deals.append({
+                    "id":               opp.get("id"),
+                    "nome":             opp.get("title"),
+                    "valor_total":      opp.get("value"),
+                    "ganho":            bool(opp.get("gain_date") or opp.get("status") == "won"),
+                    "data_fechamento":  opp.get("gain_date") or opp.get("lost_date"),
+                    "data_previsao":    opp.get("expectedCloseDate"),
+                    "criado_em":        opp.get("createDate"),
+                    "atualizado_em":    opp.get("updateDate"),
+                    "etapa":            _resolve_stage(opp),
+                    "pipeline":         None,
+                    "responsavel":      (opp.get("user") or {}).get("name"),
+                    "motivo_perda":     opp.get("loss_reason"),
+                    "contato_nome":     lead.get("fullname"),
+                    "contato_email":    lead.get("email"),
+                    "contato_telefone": lead.get("phone"),
+                    "em_espera":        False,
+                })
+            done += 1
+            if done % 100 == 0:
+                print(f"    {done}/{len(lead_ids)} leads processados...")
+
+    print(f"  Total de deals: {len(deals)}")
+    return deals
+
+
+def get_all_crm_data() -> dict:
+    return {
+        "deals":      get_deals(),
+        "atividades": [],
+        "tarefas":    [],
+    }
