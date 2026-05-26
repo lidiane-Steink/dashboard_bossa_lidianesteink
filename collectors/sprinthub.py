@@ -46,7 +46,23 @@ def _get_leads_page(page: int) -> dict:
     return resp.json().get("data", {})
 
 
-def get_leads() -> list:
+def _get_field(lead: dict, *names) -> str:
+    """Procura o valor de um campo no lead, tentando múltiplos nomes (case-insensitive)."""
+    fields = lead.get("fields") or {}
+    for name in names:
+        if lead.get(name):
+            return lead[name]
+        if fields.get(name):
+            return fields[name]
+        # case-insensitive
+        for k, v in fields.items():
+            if k.lower() == name.lower() and v:
+                return v
+    return ""
+
+
+def get_leads_raw() -> list:
+    """Retorna leads no formato bruto do SprintHub (para o coletor de deals)."""
     print("  Coletando leads do SprintHub...")
     all_leads = []
     page = 1
@@ -66,6 +82,28 @@ def get_leads() -> list:
     return all_leads
 
 
+def get_all_leads() -> list:
+    """Retorna leads no formato esperado pelo pipeline (com UTMs)."""
+    raw_leads = get_leads_raw()
+    leads = []
+    for lead in raw_leads:
+        leads.append({
+            "id":            lead.get("id"),
+            "nome":          lead.get("fullname") or lead.get("name"),
+            "email":         lead.get("email"),
+            "telefone":      lead.get("phone"),
+            "criado_em":     lead.get("createDate") or lead.get("created_at"),
+            "utm_source":    _get_field(lead, "utm_source", "utmSource"),
+            "utm_medium":    _get_field(lead, "utm_medium", "utmMedium"),
+            "utm_campaign":  _get_field(lead, "utm_campaign", "utmCampaign"),
+            "utm_content":   _get_field(lead, "utm_content", "utmContent"),
+            "utm_term":      _get_field(lead, "utm_term", "utmTerm"),
+            "canal":         _get_field(lead, "canal", "channel", "fonte"),
+            "tags":          ",".join(lead.get("tags") or []) if isinstance(lead.get("tags"), list) else (lead.get("tags") or ""),
+        })
+    return leads
+
+
 def _get_opportunities(lead_id: int) -> list:
     try:
         resp = requests.get(
@@ -83,7 +121,7 @@ def _get_opportunities(lead_id: int) -> list:
 
 def get_deals() -> list:
     print("Coletando oportunidades (deals) do SprintHub...")
-    leads = get_leads()
+    leads = get_leads_raw()
     lead_by_id = {lead.get("id"): lead for lead in leads}
     lead_ids = list(lead_by_id.keys())
 

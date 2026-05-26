@@ -3,7 +3,7 @@ import sys
 sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
 
-from collectors import rdstation, sprinthub, ads_sheets, ga4, google_ads, meta_ads
+from collectors import sprinthub, ads_sheets, ga4, google_ads, meta_ads
 from sheets import writer
 from datetime import datetime
 
@@ -13,17 +13,16 @@ def run():
     print(f"Dashboard Marketing — {datetime.now().strftime('%d/%m/%Y %H:%M')}")
     print("=" * 50)
 
-    # RD Station
-    print("\n[1/3] RD Station")
+    # SprintHub — leads + CRM (única fonte para o Ouro do Gege)
+    print("\n[1/6] SprintHub — leads")
     try:
-        leads = rdstation.get_all_leads()
+        leads = sprinthub.get_all_leads()
         leads.sort(key=lambda x: x.get("criado_em") or "", reverse=True)
         writer.write_sheet("leads", leads)
     except Exception as e:
-        print(f"  ERRO RD Station: {e}")
+        print(f"  ERRO SprintHub leads: {e}")
 
-    # SprintHub CRM
-    print("\n[2/4] SprintHub CRM")
+    print("\n[2/6] SprintHub — CRM (deals)")
     try:
         crm_data = sprinthub.get_all_crm_data()
         writer.write_sheet("crm_deals", crm_data["deals"])
