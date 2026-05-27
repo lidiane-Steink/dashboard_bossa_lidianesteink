@@ -83,23 +83,53 @@ def get_leads_raw() -> list:
 
 
 def get_all_leads() -> list:
-    """Retorna leads no formato esperado pelo pipeline (com UTMs)."""
+    """Retorna leads no formato esperado pelo pipeline."""
     raw_leads = get_leads_raw()
     leads = []
     for lead in raw_leads:
+        # Nome = firstname + lastname (SprintHub guarda separado)
+        first = (lead.get("firstname") or "").strip()
+        last  = (lead.get("lastname")  or "").strip()
+        nome  = f"{first} {last}".strip() or lead.get("fullname") or lead.get("name") or ""
+
+        # Telefone — tenta múltiplos campos
+        telefone = lead.get("phone") or lead.get("mobile") or lead.get("whatsapp") or ""
+
+        # "Canal" = como o cliente conheceu a loja (campo customizado do Ouro do Gege)
+        canal = lead.get("como_conheceu_a_loja") or _get_field(lead, "canal", "channel", "fonte") or ""
+
+        # Tags / status — SprintHub usa sh_status
+        tags = lead.get("sh_status") or ""
+        if isinstance(lead.get("tags"), list):
+            tags = ",".join(lead["tags"])
+
         leads.append({
-            "id":            lead.get("id"),
-            "nome":          lead.get("fullname") or lead.get("name"),
-            "email":         lead.get("email"),
-            "telefone":      lead.get("phone"),
-            "criado_em":     lead.get("createDate") or lead.get("created_at"),
-            "utm_source":    _get_field(lead, "utm_source", "utmSource"),
-            "utm_medium":    _get_field(lead, "utm_medium", "utmMedium"),
-            "utm_campaign":  _get_field(lead, "utm_campaign", "utmCampaign"),
-            "utm_content":   _get_field(lead, "utm_content", "utmContent"),
-            "utm_term":      _get_field(lead, "utm_term", "utmTerm"),
-            "canal":         _get_field(lead, "canal", "channel", "fonte"),
-            "tags":          ",".join(lead.get("tags") or []) if isinstance(lead.get("tags"), list) else (lead.get("tags") or ""),
+            "id":              lead.get("id"),
+            "nome":             nome,
+            "email":            lead.get("email") or "",
+            "telefone":         telefone,
+            "whatsapp":         lead.get("whatsapp") or "",
+            "criado_em":        lead.get("createDate") or lead.get("created_at"),
+            "atualizado_em":    lead.get("updatedDate") or "",
+            "ultimo_acesso":    lead.get("lastActive") or "",
+            "responsavel":      lead.get("createdByName") or lead.get("updatedByName") or "",
+            "modelo_interesse": lead.get("modelos_de_interesse") or "",
+            "bairro":           lead.get("bairro") or "",
+            "cidade":           lead.get("city") or "",
+            "estado":           lead.get("state") or "",
+            "genero":           lead.get("genero") or "",
+            "possui_filhos":    lead.get("possui_filhos") or False,
+            "possui_pets":      lead.get("possui_pets") or False,
+            "canal":            canal,
+            "tags":             tags,
+            "stage":            lead.get("stage") or "",
+            "points":           lead.get("points") or 0,
+            # Campos UTM mantidos para compatibilidade com o resto do pipeline (vazios se não houver)
+            "utm_source":       _get_field(lead, "utm_source", "utmSource"),
+            "utm_medium":       _get_field(lead, "utm_medium", "utmMedium"),
+            "utm_campaign":     _get_field(lead, "utm_campaign", "utmCampaign"),
+            "utm_content":      _get_field(lead, "utm_content", "utmContent"),
+            "utm_term":         _get_field(lead, "utm_term", "utmTerm"),
         })
     return leads
 
