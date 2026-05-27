@@ -281,7 +281,7 @@ def _parse_dt(date_str):
             return datetime.strptime(date_str, "%Y%m%d")
         except ValueError:
             pass
-    for fmt in ["%d/%m/%Y", "%Y-%m-%d", "%m/%d/%Y"]:
+    for fmt in ["%d/%m/%Y", "%Y-%m-%d", "%m/%d/%Y", "%d-%m-%Y"]:
         try:
             return datetime.strptime(date_str[:10], fmt)
         except ValueError:

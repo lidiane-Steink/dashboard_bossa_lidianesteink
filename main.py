@@ -61,10 +61,21 @@ def run():
     except Exception as e:
         print(f"  ERRO Meta Ads API: {e}")
 
-    # Planilhas de Ads — DESABILITADO para Ouro do Gege.
-    # Quando o cliente fornecer as planilhas de Meta Ads / Google Ads,
-    # reabilitar este bloco e atualizar IDs em collectors/ads_sheets.py.
-    print("\n[6/6] Planilhas fallback — desabilitado (Ouro do Gege sem Ads ainda)")
+    # Planilhas de Ads do Ouro do Gege — abas 'Meta' e 'Google' na planilha principal
+    print("\n[6/6] Planilhas Meta + Google Ads")
+    try:
+        google_data = ads_sheets.get_google_ads_sheet_data()
+        if google_data:
+            writer.write_sheet("google_ads", google_data)
+    except Exception as e:
+        print(f"  ERRO Google Ads (planilha): {e}")
+
+    try:
+        meta_data = ads_sheets.get_meta_ads_sheet_data()
+        if meta_data:
+            writer.write_sheet("meta_ads", meta_data)
+    except Exception as e:
+        print(f"  ERRO Meta Ads (planilha): {e}")
 
     print("\n" + "=" * 50)
     print("Coleta finalizada com sucesso!")
