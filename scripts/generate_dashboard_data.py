@@ -40,7 +40,11 @@ def get_client():
 
 def read_sheet(gc, sheet_name):
     spreadsheet = gc.open_by_key(config.GOOGLE_SHEET_ID)
-    ws = spreadsheet.worksheet(sheet_name)
+    try:
+        ws = spreadsheet.worksheet(sheet_name)
+    except gspread.WorksheetNotFound:
+        print(f"  AVISO: aba '{sheet_name}' não existe — retornando lista vazia.")
+        return []
     rows = ws.get_all_values()
     if not rows:
         return []
