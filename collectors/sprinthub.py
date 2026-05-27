@@ -7,8 +7,12 @@ import requests
 import config
 
 BASE_URL = "https://sprinthub-api-master.sprinthub.app"
-MAX_WORKERS = 4
+MAX_WORKERS = 6
+# API SprintHub limita ~30 por página com allFields=1, ~100 sem. Mantemos alto e
+# paramos quando a página vier curta (lógica abaixo).
 PAGE_SIZE = 200
+# Cap defensivo para evitar loop infinito em caso de bug
+MAX_PAGES = 500
 
 # Mapeamento crm_column ID (número) → nome da etapa do funil.
 # Preencha os IDs corretos após verificar no SprintHub:
@@ -62,23 +66,34 @@ def _get_field(lead: dict, *names) -> str:
 
 
 def get_leads_raw() -> list:
-    """Retorna leads no formato bruto do SprintHub (para o coletor de deals)."""
+    """Retorna leads no formato bruto do SprintHub (paginação até esgotar)."""
     print("  Coletando leads do SprintHub...")
     all_leads = []
     page = 1
-    while True:
+    last_batch_size = 0
+    while page <= MAX_PAGES:
         data = _get_leads_page(page)
         batch = data.get("leads", [])
         if not batch:
             break
         all_leads.extend(batch)
-        total = data.get("total", 0)
-        print(f"    {len(all_leads)}/{total} leads coletados...")
-        if len(all_leads) >= total:
+        total = data.get("total") or 0
+        # Log de progresso a cada 5 páginas para não poluir
+        if page == 1 or page % 5 == 0:
+            tag = f"/{total}" if total else ""
+            print(f"    pág {page}: +{len(batch)} leads → {len(all_leads)}{tag} no total")
+        # Critérios de parada (em ordem de prioridade):
+        # 1) total conhecido e já atingido
+        # 2) batch curto (menos que o anterior ou < 10) = última página
+        # 3) cap MAX_PAGES atingido
+        if total and len(all_leads) >= total:
             break
+        if last_batch_size and len(batch) < last_batch_size and len(batch) < 10:
+            break
+        last_batch_size = len(batch)
         page += 1
-        time.sleep(0.2)
-    print(f"  Total de leads: {len(all_leads)}")
+        time.sleep(0.15)
+    print(f"  Total de leads coletados: {len(all_leads)}")
     return all_leads
 
 
