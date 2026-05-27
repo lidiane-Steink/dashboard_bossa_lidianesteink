@@ -25,10 +25,25 @@ def write_sheet(sheet_name, data, spreadsheet_id=None):
     sid = spreadsheet_id or config.GOOGLE_SHEET_ID
     spreadsheet = gc.open_by_key(sid)
 
-    try:
-        worksheet = spreadsheet.worksheet(sheet_name)
-    except gspread.WorksheetNotFound:
-        worksheet = spreadsheet.add_worksheet(title=sheet_name, rows=10000, cols=50)
+    # Procura aba existente — tolera diferenças de case e espaços
+    target = sheet_name.strip().lower()
+    worksheet = None
+    for ws in spreadsheet.worksheets():
+        if ws.title.strip().lower() == target:
+            worksheet = ws
+            break
+    if worksheet is None:
+        try:
+            worksheet = spreadsheet.add_worksheet(title=sheet_name, rows=10000, cols=50)
+        except gspread.exceptions.APIError as e:
+            # Race condition: aba foi criada entre a busca e a criação — busca de novo
+            if "already exists" in str(e).lower():
+                for ws in spreadsheet.worksheets():
+                    if ws.title.strip().lower() == target:
+                        worksheet = ws
+                        break
+            if worksheet is None:
+                raise
 
     df = pd.DataFrame(data)
     df = df.fillna("")
