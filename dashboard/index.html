@@ -915,9 +915,6 @@
     <a href="#" data-section="ga4">
       <i class="icon">🌐</i><span class="nav-label">Google Analytics</span>
     </a>
-    <a href="#" data-section="previsibilidade">
-      <i class="icon">📈</i><span class="nav-label">Previsibilidade 2026</span>
-    </a>
   </nav>
   <div class="update-info" id="sidebar-update">Carregando...</div>
 </aside>
@@ -1385,34 +1382,6 @@
       </div>
     </div>
 
-    <!-- PREVISIBILIDADE 2026 -->
-    <div id="sec-previsibilidade" class="section">
-      <div class="section-title">📈 Previsibilidade 2026</div>
-      <p style="font-size:12px;color:#666;margin:0 0 16px;">
-        Espelho da planilha <strong>PREVISIBILIDADE IA</strong> · Atualização automática a cada coleta (3x/dia) ·
-        <span id="prev-ultima-atualizacao" style="color:var(--primary);font-weight:600;"></span>
-      </p>
-
-      <!-- Tabs PREVISIBILIDADE vs ATINGIMENTO -->
-      <div class="prev-tabs">
-        <button class="prev-tab active" id="prev-tab-prev" onclick="switchPrevTab('previsibilidade')">
-          📊 PREVISIBILIDADE (Meta)
-        </button>
-        <button class="prev-tab" id="prev-tab-real" onclick="switchPrevTab('atingimento')">
-          ✅ ATINGIMENTO (Real)
-        </button>
-      </div>
-
-      <div id="prev-table-container" class="prev-table-wrap">
-        <p style="color:#999;padding:20px;">Carregando dados de previsibilidade...</p>
-      </div>
-
-      <p style="font-size:11px;color:#999;margin-top:16px;font-style:italic;">
-        💡 Pra editar os dados, abre a planilha <a href="https://docs.google.com/spreadsheets/d/1f_G15gb637rTU7JfO1lWt7lYuYJBmrM3lvMezNuj0-U/edit#gid=593567545" target="_blank" rel="noopener" style="color:var(--primary);">PREVISIBILIDADE IA</a>.
-        Esta página atualiza no próximo cron (07:30 / 13:30 / 16:00 BRT).
-      </p>
-    </div>
-
   </div><!-- /content -->
 </div><!-- /main -->
 
@@ -1719,7 +1688,6 @@ function renderSection(sec) {
     case 'criativos': renderCreatives(); break;
     case 'utm':       renderUTM(); break;
     case 'ga4':       renderGA4(); break;
-    case 'previsibilidade': renderPrevisibilidade(); break;
   }
 }
 
@@ -3496,114 +3464,6 @@ function renderGA4() {
   ).join('') || '<tr><td colspan="4" class="empty">Sem dados</td></tr>';
 }
 
-// ─── PREVISIBILIDADE 2026 ────────────────────────────────────────────────────
-let _prevTabAtual = 'previsibilidade';
-
-function switchPrevTab(tab) {
-  _prevTabAtual = tab;
-  document.getElementById('prev-tab-prev').classList.toggle('active', tab === 'previsibilidade');
-  document.getElementById('prev-tab-real').classList.toggle('active', tab === 'atingimento');
-  renderPrevisibilidade();
-}
-
-function renderPrevisibilidade() {
-  const wrap = document.getElementById('prev-table-container');
-  const P = DATA.previsibilidade;
-
-  if (!P) {
-    wrap.innerHTML = `
-      <div style="padding:24px;text-align:center;color:#999;">
-        <p style="font-size:14px;">⚠️ Dados de previsibilidade ainda não foram coletados.</p>
-        <p style="font-size:11px;">A planilha PREVISIBILIDADE IA será lida no próximo cron (07:30 / 13:30 / 16:00 BRT).</p>
-      </div>`;
-    return;
-  }
-
-  // Última atualização
-  const upd = document.getElementById('prev-ultima-atualizacao');
-  if (upd && P.ultima_atualizacao) {
-    upd.textContent = `Última atualização: ${P.ultima_atualizacao}`;
-  }
-
-  const bloco = P[_prevTabAtual];
-  if (!bloco || !bloco.rows || !bloco.rows.length) {
-    wrap.innerHTML = `<p style="padding:24px;color:#999;">Bloco "${_prevTabAtual}" não encontrado na planilha.</p>`;
-    return;
-  }
-
-  const meses = bloco.meses || [];
-
-  // Trimestres baseados na posição dos meses (Jan-Mar = Q1, Abr-Jun = Q2, etc.)
-  const trimestres = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
-  meses.forEach((m, i) => {
-    const mLow = m.toLowerCase();
-    if (['janeiro', 'fevereiro', 'março'].includes(mLow) && i % 3 === 0) trimestres[i * 3] = 'Q1';
-    else if (['abril', 'maio', 'junho'].includes(mLow) && trimestres[i * 3] === '') trimestres[i * 3] = 'Q2';
-    else if (['julho', 'agosto', 'setembro'].includes(mLow) && trimestres[i * 3] === '') trimestres[i * 3] = 'Q3';
-    else if (['outubro', 'novembro', 'dezembro'].includes(mLow) && trimestres[i * 3] === '') trimestres[i * 3] = 'Q4';
-  });
-  // Detectar trimestres baseado no primeiro mês de cada
-  const quarterStart = {};
-  meses.forEach((m, i) => {
-    const ml = m.toLowerCase();
-    if (ml === 'janeiro') quarterStart[i] = 'Q1';
-    else if (ml === 'abril') quarterStart[i] = 'Q2';
-    else if (ml === 'julho') quarterStart[i] = 'Q3';
-    else if (ml === 'outubro') quarterStart[i] = 'Q4';
-  });
-
-  // ── Header trimestres ──
-  let headerQ = '<tr class="quarter-row"><th></th>';
-  meses.forEach((_, i) => {
-    if (quarterStart[i]) {
-      headerQ += `<th colspan="3">${quarterStart[i]}</th>`;
-    } else {
-      // só adiciona se nenhum colspan anterior cobre essa posição
-      headerQ += `<th colspan="3"></th>`;
-    }
-  });
-  headerQ += '</tr>';
-
-  // ── Header meses ──
-  let headerM = '<tr class="month-row"><th>Mês</th>';
-  meses.forEach(m => {
-    headerM += `<th colspan="3">${m}</th>`;
-  });
-  headerM += '</tr>';
-
-  // ── Sub-header: % CRM / Custo ──
-  let headerSub = '<tr class="subheader-row"><th></th>';
-  meses.forEach(() => {
-    headerSub += '<th>Valor</th><th>% CRM</th><th>Custo / Leads</th>';
-  });
-  headerSub += '</tr>';
-
-  // ── Linhas de dados ──
-  let bodyHtml = '';
-  bloco.rows.forEach(r => {
-    const rowClass = `prev-row-${r.categoria}`;
-    bodyHtml += `<tr class="${rowClass}">`;
-    bodyHtml += `<td>${r.label}</td>`;
-    r.valores.forEach(v => {
-      bodyHtml += `<td>${v.v || ''}</td>`;
-      bodyHtml += `<td class="prev-pct-col">${v.pct || ''}</td>`;
-      bodyHtml += `<td class="prev-custo-col">${v.custo || ''}</td>`;
-    });
-    bodyHtml += '</tr>';
-  });
-
-  wrap.innerHTML = `
-    <table class="prev-table">
-      <thead>
-        ${headerQ}
-        ${headerM}
-        ${headerSub}
-      </thead>
-      <tbody>${bodyHtml}</tbody>
-    </table>
-  `;
-}
-
 // ─── SUPABASE: configuração ───────────────────────────────────────────────────
 // PREENCHA com os valores do seu projeto em: supabase.com → Project Settings → API
 const SUPABASE_URL  = 'https://cywxwudiippjghnliwdh.supabase.co';
@@ -3755,9 +3615,6 @@ loadData();
     </a>
     <a href="#" data-section="ga4">
       <i class="icon">🌐</i><span>Google Analytics</span>
-    </a>
-    <a href="#" data-section="previsibilidade">
-      <i class="icon">📈</i><span>Previsibilidade 2026</span>
     </a>
   </nav>
   <div class="mob-drawer-footer" id="mob-drawer-update">Carregando...</div>

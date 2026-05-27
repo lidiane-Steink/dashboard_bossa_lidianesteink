@@ -1459,22 +1459,6 @@ def main():
     print("  Lendo GA4...")
     ga4 = read_sheet(gc, "ga4_sessions")
 
-    print("  Lendo Previsibilidade 2026...")
-    previsibilidade_data = None
-    try:
-        from collectors import previsibilidade
-        previsibilidade_data = previsibilidade.get_previsibilidade_data()
-        if previsibilidade_data:
-            blocks = []
-            if previsibilidade_data.get("previsibilidade"):
-                blocks.append(f"PREVISIBILIDADE ({len(previsibilidade_data['previsibilidade']['rows'])} linhas)")
-            if previsibilidade_data.get("atingimento"):
-                blocks.append(f"ATINGIMENTO ({len(previsibilidade_data['atingimento']['rows'])} linhas)")
-            print(f"    {' + '.join(blocks)}")
-    except Exception as e:
-        print(f"    AVISO: não consegui ler planilha de Previsibilidade: {e}")
-        previsibilidade_data = None
-
     print("  Lendo Google Ads Criativos...")
     google_ads_creatives_rows = []
     try:
@@ -1516,7 +1500,6 @@ def main():
         "ga4": aggregate_ga4(ga4),
         "utm": utm_agg,
         "google_ads_creatives": aggregate_google_ads_creatives(google_ads_creatives_rows, leads_daily_map=google_leads_daily),
-        "previsibilidade": previsibilidade_data,
         "relatorio": build_relatorio(leads, crm_agg, meta_agg, google_agg, utm_agg, meta_rows=meta_ads),
     }
 
