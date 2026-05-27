@@ -32,10 +32,9 @@ jobs:
       - name: Criar arquivo .env
         run: |
           cat > .env << 'EOF'
-          RD_CLIENT_ID=${{ secrets.RD_CLIENT_ID }}
-          RD_CLIENT_SECRET=${{ secrets.RD_CLIENT_SECRET }}
-          RD_REFRESH_TOKEN=${{ secrets.RD_REFRESH_TOKEN }}
-          RD_CRM_TOKEN=${{ secrets.RD_CRM_TOKEN }}
+          SPRINTHUB_API_TOKEN=${{ secrets.SPRINTHUB_API_TOKEN }}
+          SPRINTHUB_INSTANCE=${{ secrets.SPRINTHUB_INSTANCE }}
+          SPRINTHUB_STAGE_MAP=${{ secrets.SPRINTHUB_STAGE_MAP }}
           GOOGLE_SHEET_ID=${{ secrets.GOOGLE_SHEET_ID }}
           GOOGLE_ADS_DEVELOPER_TOKEN=${{ secrets.GOOGLE_ADS_DEVELOPER_TOKEN }}
           GOOGLE_ADS_CLIENT_ID=${{ secrets.GOOGLE_ADS_CLIENT_ID }}
@@ -64,17 +63,9 @@ jobs:
         run: python -u main.py
         timeout-minutes: 60
 
-      - name: Gerar dados do dashboard
+      - name: Gerar dados do dashboard (gera summary.json e faz upload pro Supabase)
         run: |
           mkdir -p dashboard/data
           python -u scripts/generate_dashboard_data.py
         timeout-minutes: 10
-
-      - name: Publicar dashboard no GitHub Pages
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: dashboard/
-
-      - name: Deploy para GitHub Pages
-        uses: actions/deploy-pages@v4
 
