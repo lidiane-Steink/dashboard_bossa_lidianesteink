@@ -43,11 +43,33 @@ def _resolve_stage(opp: dict) -> str:
     return STAGE_MAP.get(col_id, f"coluna_{col_id}") if col_id else "sem etapa"
 
 
-def _get_leads_page(page: int) -> dict:
+def _get_leads_page(page: int, max_retries: int = 5) -> dict:
+    """Busca uma página de leads. Retorna {} se falhar após retries (sinaliza fim para o caller)."""
     params = {**_base_params(), "allFields": "1", "page": page, "limit": PAGE_SIZE}
-    resp = requests.get(f"{BASE_URL}/leads", headers=_headers(), params=params, timeout=30)
-    resp.raise_for_status()
-    return resp.json().get("data", {})
+    backoff = 3
+    for attempt in range(max_retries):
+        try:
+            resp = requests.get(f"{BASE_URL}/leads", headers=_headers(), params=params, timeout=30)
+            # 401 = rate limit / token bloqueado temporariamente → espera e tenta de novo
+            if resp.status_code == 401:
+                if attempt < max_retries - 1:
+                    print(f"    [WARN] 401 (rate limit) na pág {page}, aguardando {backoff}s (tentativa {attempt+2}/{max_retries})...")
+                    time.sleep(backoff)
+                    backoff = min(backoff * 2, 60)
+                    continue
+                print(f"    ERRO 401 persistente na pág {page} — desistindo dessa página.")
+                return {}
+            resp.raise_for_status()
+            return resp.json().get("data", {})
+        except requests.RequestException as e:
+            if attempt < max_retries - 1:
+                print(f"    [WARN] erro de rede na pág {page}: {e} — retentando em {backoff}s")
+                time.sleep(backoff)
+                backoff = min(backoff * 2, 60)
+                continue
+            print(f"    ERRO definitivo na pág {page}: {e}")
+            return {}
+    return {}
 
 
 def _get_field(lead: dict, *names) -> str:
@@ -92,14 +114,17 @@ def get_leads_raw() -> list:
             break
         last_batch_size = len(batch)
         page += 1
-        time.sleep(0.15)
+        # Pausa maior a cada 20 páginas para evitar rate limit do SprintHub
+        if page % 20 == 0:
+            time.sleep(2.0)
+        else:
+            time.sleep(0.5)
     print(f"  Total de leads coletados: {len(all_leads)}")
     return all_leads
 
 
-def get_all_leads() -> list:
-    """Retorna leads no formato esperado pelo pipeline."""
-    raw_leads = get_leads_raw()
+def normalize_leads(raw_leads: list) -> list:
+    """Converte leads brutos do SprintHub para o formato do pipeline."""
     leads = []
     for lead in raw_leads:
         # Nome = firstname + lastname (SprintHub guarda separado)
@@ -164,9 +189,14 @@ def _get_opportunities(lead_id: int) -> list:
         return []
 
 
-def get_deals() -> list:
+def get_all_leads() -> list:
+    """Wrapper: coleta + normaliza."""
+    return normalize_leads(get_leads_raw())
+
+
+def get_deals_from_leads(leads: list) -> list:
+    """Busca oportunidades a partir de uma lista de leads JÁ COLETADA (evita refetch)."""
     print("Coletando oportunidades (deals) do SprintHub...")
-    leads = get_leads_raw()
     lead_by_id = {lead.get("id"): lead for lead in leads}
     lead_ids = list(lead_by_id.keys())
 
@@ -206,8 +236,10 @@ def get_deals() -> list:
 
 
 def get_all_crm_data() -> dict:
+    """Wrapper antigo — coleta leads e depois deals. Mantido para compatibilidade."""
+    raw_leads = get_leads_raw()
     return {
-        "deals":      get_deals(),
+        "deals":      get_deals_from_leads(raw_leads),
         "atividades": [],
         "tarefas":    [],
     }

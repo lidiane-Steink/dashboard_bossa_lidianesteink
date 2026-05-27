@@ -14,22 +14,33 @@ def run():
     print("=" * 50)
 
     # SprintHub — leads + CRM (única fonte para o Ouro do Gege)
+    # Coletamos os leads UMA VEZ e reusamos a lista para deals (evita duplicar chamada).
     print("\n[1/6] SprintHub — leads")
+    leads_raw = []
     try:
-        leads = sprinthub.get_all_leads()
-        leads.sort(key=lambda x: x.get("criado_em") or "", reverse=True)
-        writer.write_sheet("leads", leads)
+        leads_raw = sprinthub.get_leads_raw()
     except Exception as e:
-        print(f"  ERRO SprintHub leads: {e}")
+        print(f"  ERRO coletando leads (parcial pode ter sido obtida): {e}")
+
+    # Mesmo que tenha parado no meio, salva o que conseguiu
+    if leads_raw:
+        try:
+            leads = sprinthub.normalize_leads(leads_raw)
+            leads.sort(key=lambda x: x.get("criado_em") or "", reverse=True)
+            writer.write_sheet("leads", leads)
+        except Exception as e:
+            print(f"  ERRO ao salvar leads: {e}")
 
     print("\n[2/6] SprintHub — CRM (deals)")
-    try:
-        crm_data = sprinthub.get_all_crm_data()
-        writer.write_sheet("crm_deals", crm_data["deals"])
-        writer.write_sheet("crm_atividades", crm_data["atividades"])
-        writer.write_sheet("crm_tarefas", crm_data["tarefas"])
-    except Exception as e:
-        print(f"  ERRO SprintHub CRM: {e}")
+    if leads_raw:
+        try:
+            deals = sprinthub.get_deals_from_leads(leads_raw)
+            if deals:
+                writer.write_sheet("crm_deals", deals)
+        except Exception as e:
+            print(f"  ERRO SprintHub deals: {e}")
+    else:
+        print("  Pulado — sem leads coletados.")
 
     # Google Analytics 4
     print("\n[3/6] Google Analytics 4")
