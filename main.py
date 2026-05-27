@@ -61,34 +61,10 @@ def run():
     except Exception as e:
         print(f"  ERRO Meta Ads API: {e}")
 
-    # Planilha externa como fallback se APIs falharam
-    if not google_api_ok or not meta_api_ok:
-        print("\n[6/6] Planilhas fallback")
-        if not google_api_ok:
-            try:
-                google_data = ads_sheets.get_google_ads_sheet_data()
-                if google_data:
-                    writer.write_sheet("google_ads", google_data)
-                    google_api_ok = True
-            except Exception as e:
-                print(f"  ERRO Google Ads planilha diária: {e}")
-        if not meta_api_ok:
-            try:
-                meta_data, _ = ads_sheets.get_ads_data()
-                writer.write_sheet("meta_ads", meta_data)
-            except Exception as e:
-                print(f"  ERRO Meta Ads planilha: {e}")
-    else:
-        print("\n[6/6] APIs OK — planilhas fallback não necessárias")
-
-    # Google Ads creatives (texto por anúncio — sem thumbnail por limitação da planilha)
-    print("\n[7/7] Google Ads Criativos")
-    try:
-        creatives_data = ads_sheets.get_google_ads_creatives_sheet_data()
-        if creatives_data:
-            writer.write_sheet("google_ads_creatives", creatives_data)
-    except Exception as e:
-        print(f"  ERRO Google Ads Criativos: {e}")
+    # Planilhas de Ads — DESABILITADO para Ouro do Gege.
+    # Quando o cliente fornecer as planilhas de Meta Ads / Google Ads,
+    # reabilitar este bloco e atualizar IDs em collectors/ads_sheets.py.
+    print("\n[6/6] Planilhas fallback — desabilitado (Ouro do Gege sem Ads ainda)")
 
     print("\n" + "=" * 50)
     print("Coleta finalizada com sucesso!")
