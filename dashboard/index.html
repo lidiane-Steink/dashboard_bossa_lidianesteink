@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard Marketing — Ouro do Gege</title>
+<title>Dashboard Asce — Bossa Elétricas</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect x='6' y='4' width='52' height='56' rx='5' fill='%23B3D4F0' stroke='%23000' stroke-width='3'/><rect x='38' y='10' width='14' height='5' rx='1.5' fill='%23FFFFFF' stroke='%23000' stroke-width='2'/><circle cx='22' cy='22' r='9' fill='%23E74C3C' stroke='%23000' stroke-width='2'/><path d='M22 22 L22 13 A9 9 0 0 1 31 22 Z' fill='%2327AE60'/><line x1='34' y1='30' x2='52' y2='30' stroke='%23000' stroke-width='2'/><line x1='34' y1='36' x2='46' y2='36' stroke='%23000' stroke-width='2'/><rect x='12' y='42' width='8' height='12' fill='%23F4D35E' stroke='%23000' stroke-width='2'/><rect x='22' y='38' width='8' height='16' fill='%23F4A24A' stroke='%23000' stroke-width='2'/><rect x='32' y='34' width='8' height='20' fill='%23E67E22' stroke='%23000' stroke-width='2'/><rect x='42' y='40' width='8' height='14' fill='%23D35400' stroke='%23000' stroke-width='2'/></svg>">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -184,6 +184,8 @@
   .kpi-card.orange .kpi-value { color: var(--orange); }
   .kpi-card.teal .kpi-value { color: var(--teal); }
   .kpi-card.purple .kpi-value { color: var(--purple); }
+  .kpi-card.na { opacity: .6; border-style: dashed; }
+  .kpi-card.na .kpi-value { color: #9CA3AF; }
 
   /* CHARTS */
   .charts-row {
@@ -861,8 +863,8 @@
 <div id="login-screen" class="hidden">
   <div class="login-box">
     <div class="login-logo">🔒</div>
-    <h2>Dashboard Marketing</h2>
-    <div class="login-sub">Ouro do Gege</div>
+    <h2>Dashboard Asce</h2>
+    <div class="login-sub">Bossa Elétricas</div>
     <form id="login-form" autocomplete="off">
       <input type="password" id="login-pwd" placeholder="Digite a senha" autofocus required>
       <button type="submit" id="login-btn">Entrar</button>
@@ -881,8 +883,8 @@
 <!-- SIDEBAR -->
 <aside id="sidebar">
   <div class="logo">
-    <h2>Ouro do Gege</h2>
-    <p>Dashboard Marketing</p>
+    <h2>Bossa Elétricas</h2>
+    <p>Dashboard Asce</p>
   </div>
   <nav>
     <a href="#" class="active" data-section="executivo">
@@ -931,7 +933,7 @@
         <line x1="2" y1="17" x2="20" y2="17"/>
       </svg>
     </button>
-    <h1>Dashboard Marketing — Ouro do Gege</h1>
+    <h1>Dashboard Asce — Bossa Elétricas</h1>
     <div class="filter-group">
       <label>Atalho</label>
       <select id="filter-preset" onchange="applyPreset()">
@@ -2050,32 +2052,33 @@ function renderExecutivo() {
       if (r.source) filtCampsSource[r.campaign] = r.source;
     });
 
-  // Pagos/Orgânicos filtrados por dia
-  const pagos = ['metaads', 'googlecpc'].reduce((s, src) => s + (filtSources[src] || 0), 0);
-  const organicos = totalLeadsPeriodo - pagos;
-  const pct = (v, t) => t > 0 ? ' (' + (v / t * 100).toFixed(0) + '%)' : '';
-
-  // Google Ads no período — gasto diário somado
-  let googleGasto = 0;
-  (DATA.google_ads.daily || []).filter(r => !datePred || datePred(r.data))
-    .forEach(r => { googleGasto += r.gasto; });
-  const googleLeads = filtSources['googlecpc'] || 0;
-  const googleCPL = googleLeads > 0 ? googleGasto / googleLeads : 0;
-
-  // Meta Ads no período — gasto diário somado
-  let metaGasto = 0;
+  // ── Leads pagos: vêm das PLATAFORMAS (Meta "Leads do Website" + Google "Conversões").
+  // Os leads do CRM (SprintHub) não trazem UTM/origem, então a contagem de pagos é feita
+  // pelo que as plataformas reportam — fonte mais confiável disponível hoje.
+  let metaGasto = 0, metaLeadsSite = 0;
   (DATA.meta_ads.daily || []).filter(r => !datePred || datePred(r.data))
-    .forEach(r => { metaGasto += r.gasto; });
-  const metaLeads = filtSources['metaads'] || 0;
-  const metaCPL = metaLeads > 0 ? metaGasto / metaLeads : 0;
+    .forEach(r => { metaGasto += r.gasto || 0; metaLeadsSite += r.leads || 0; });
+
+  let googleGasto = 0, googleConvTot = 0;
+  (DATA.google_ads.daily || []).filter(r => !datePred || datePred(r.data))
+    .forEach(r => { googleGasto += r.gasto || 0; googleConvTot += r.conversoes || 0; });
+
+  const metaLeads   = Math.round(metaLeadsSite);
+  const googleLeads = Math.round(googleConvTot);
+  const metaCPL     = metaLeads   > 0 ? metaGasto   / metaLeads   : 0;
+  const googleCPL   = googleLeads > 0 ? googleGasto / googleLeads : 0;
+
+  const pagos = metaLeads + googleLeads;
+  const organicos = Math.max(0, totalLeadsPeriodo - pagos);
+  const pct = (v, t) => t > 0 ? ' (' + (v / t * 100).toFixed(0) + '%)' : '';
 
   // ── Bloco 1: KPI leads ───────────────────────────────────────────────────────
   const lostPago = crm.total_lost_pago || 0;
   const lostOrg  = crm.total_lost_organico || 0;
   document.getElementById('kpi-leads-exec').innerHTML = [
     { label: 'Total de Leads Gerados', value: fmt.num(totalLeadsPeriodo), sub: 'período selecionado', cls: '' },
-    { label: 'Leads Pagos', value: fmt.num(pagos), sub: pct(pagos, totalLeadsPeriodo) + ' do total', cls: 'blue' },
-    { label: 'Leads Orgânicos', value: fmt.num(organicos), sub: pct(organicos, totalLeadsPeriodo) + ' do total', cls: 'green' },
+    { label: 'Leads Pagos', value: fmt.num(pagos), sub: 'Meta + Google' + pct(pagos, totalLeadsPeriodo), cls: 'blue' },
+    { label: 'Leads Orgânicos', value: fmt.num(organicos), sub: 'demais origens' + pct(organicos, totalLeadsPeriodo), cls: 'green' },
     { label: 'Leads Abertos (Ativos)', value: fmt.num(crm.total_open), sub: pct(crm.total_open, crm.total_deals) + ' dos negócios', cls: 'orange' },
     { label: 'Leads Perdidos (Total)', value: fmt.num(crm.total_lost), sub: pct(crm.total_lost, crm.total_deals) + ' dos negócios', cls: 'red' },
     { label: 'Leads Perdidos Pagos', value: fmt.num(lostPago), sub: pct(lostPago, crm.total_lost) + ' das perdas', cls: 'red' },
@@ -2827,31 +2830,40 @@ function renderMeta() {
   const datePred = getDateFilter();   // filtro dia a dia — mesma fonte da Visão Executiva
   const monthly  = getMetaMonthly(pred);
 
-  // Gasto / Impressões / Cliques → planilha Meta Ads (dados da plataforma)
-  let totalGasto = 0, totalImpr = 0, totalCliques = 0;
+  // Todas as métricas vêm da planilha Meta Ads (dados da própria plataforma).
+  // Leads do site = "Leads do Website" exportado da Meta (NÃO depende de UTM no CRM).
+  let totalGasto = 0, totalImpr = 0, totalCliques = 0, totalLeadsSite = 0;
   (DATA.meta_ads.daily || [])
     .filter(r => !datePred || datePred(r.data))
     .forEach(r => {
-      totalGasto   += r.gasto      || 0;
-      totalImpr    += r.impressoes || 0;
-      totalCliques += r.cliques    || 0;
+      totalGasto     += r.gasto      || 0;
+      totalImpr      += r.impressoes || 0;
+      totalCliques   += r.cliques    || 0;
+      totalLeadsSite += r.leads      || 0;
     });
 
-  // Leads → aba "leads" RD Station com utm_source = 'metaads' (bate com CRM)
-  const totalLeads = (DATA.utm.sources_daily || [])
-    .filter(r => r.source === 'metaads' && (!datePred || datePred(r.data)))
-    .reduce((s, r) => s + r.total, 0);
+  const cplSite = totalLeadsSite > 0 ? totalGasto / totalLeadsSite : 0;
+  const cpcLink = totalCliques   > 0 ? totalGasto / totalCliques   : 0;
+  const cpm     = totalImpr      > 0 ? totalGasto / totalImpr * 1000 : 0;
+  const ctr     = totalImpr      > 0 ? totalCliques / totalImpr * 100 : 0;
 
-  const cpl = totalLeads > 0 ? totalGasto / totalLeads : 0;
-  const ctr = totalImpr  > 0 ? totalCliques / totalImpr * 100 : 0;
+  // "—" = métrica que ainda não existe como coluna na planilha Meta.
+  // Quando a coluna for adicionada no export, basta somar aqui (ver collectors/ads_sheets.py).
+  const NA = '—';
 
   document.getElementById('kpi-meta').innerHTML = [
-    { label: 'Gasto Total', value: fmt.currency(totalGasto), sub: 'período', cls: '' },
-    { label: 'Leads Gerados', value: fmt.num(totalLeads), sub: 'período', cls: 'blue' },
-    { label: 'CPL Médio', value: fmt.currency(cpl), sub: 'custo por lead', cls: 'orange' },
-    { label: 'Impressões', value: fmt.k(totalImpr), sub: 'período', cls: '' },
-    { label: 'Cliques no Link', value: fmt.k(totalCliques), sub: 'período', cls: '' },
-    { label: 'CTR Médio', value: fmt.pct(ctr), sub: 'cliques/impressões', cls: 'green' },
+    { label: 'Gasto Total',               value: fmt.currency(totalGasto),  sub: 'investimento no período', cls: '' },
+    { label: 'Leads no Site',             value: fmt.num(totalLeadsSite),   sub: 'Meta — Leads do Website', cls: 'blue' },
+    { label: 'Custo por Lead no Site',    value: fmt.currency(cplSite),     sub: 'gasto / leads',          cls: 'orange' },
+    { label: 'Contatos no Site',          value: NA,                        sub: 'adicionar coluna na aba Meta', cls: 'na' },
+    { label: 'Custo por Contato no Site', value: NA,                        sub: 'adicionar coluna na aba Meta', cls: 'na' },
+    { label: 'Conversas Iniciadas',       value: NA,                        sub: 'a partir de anúncios — adicionar coluna', cls: 'na' },
+    { label: 'Custo por Conversa',        value: NA,                        sub: 'adicionar coluna na aba Meta', cls: 'na' },
+    { label: 'Cliques nos Links',         value: fmt.k(totalCliques),       sub: 'período',                cls: '' },
+    { label: 'Custo por Clique no Link',  value: fmt.currency(cpcLink),     sub: 'gasto / cliques',        cls: 'teal' },
+    { label: 'CPM',                       value: fmt.currency(cpm),         sub: 'custo por mil impressões', cls: 'purple' },
+    { label: 'CTR (cliques no link)',     value: fmt.pct(ctr),              sub: 'cliques / impressões',   cls: 'green' },
+    { label: 'Impressões',                value: fmt.k(totalImpr),          sub: 'período',                cls: '' },
   ].map(k => `<div class="kpi-card ${k.cls}"><div class="kpi-label">${k.label}</div><div class="kpi-value">${k.value}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
 
   // Últimos 3 meses disponíveis (union meta + leads)
@@ -3580,8 +3592,8 @@ loadData();
 <div id="mob-drawer">
   <div class="mob-drawer-header">
     <div>
-      <h2>Ouro do Gege</h2>
-      <p>Dashboard Marketing</p>
+      <h2>Bossa Elétricas</h2>
+      <p>Dashboard Asce</p>
     </div>
     <button id="mob-drawer-close" onclick="closeMobDrawer()">✕</button>
   </div>
