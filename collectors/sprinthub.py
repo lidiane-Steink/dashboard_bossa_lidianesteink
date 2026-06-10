@@ -123,6 +123,51 @@ def get_leads_raw() -> list:
     return all_leads
 
 
+# SprintHub guarda UTMs num array createdByUtm, nesta ordem (confirmado via API):
+#   [0]=utm_source  [1]=utm_campaign  [2]=utm_medium  [3]=utm_term  [4]=utm_content
+# Normalizamos o source para as chaves que o dashboard espera (metaads / googlecpc).
+SOURCE_NORMALIZE = {
+    "facebook":  "metaads",
+    "fb":        "metaads",
+    "instagram": "metaads",
+    "meta":      "metaads",
+    "metaads":   "metaads",
+    "googleads": "googlecpc",
+    "google":    "googlecpc",
+    "googlecpc": "googlecpc",
+    "adwords":   "googlecpc",
+}
+
+
+def _clean_utm(v) -> str:
+    """Limpa um valor de UTM. Macros não renderizadas ({{...}}) viram string vazia."""
+    if not v:
+        return ""
+    s = str(v).strip()
+    # Macro do Meta que não foi substituída (ex: "{{leads_site}}") — descarta
+    if s.startswith("{{") and s.endswith("}}"):
+        return ""
+    return s
+
+
+def _parse_utm_array(lead: dict) -> dict:
+    """Extrai utm_* do array createdByUtm do SprintHub."""
+    arr = lead.get("createdByUtm")
+    if not isinstance(arr, list):
+        return {"utm_source": "", "utm_medium": "", "utm_campaign": "",
+                "utm_content": "", "utm_term": ""}
+    # Preenche com vazio até ter 5 posições
+    arr = (list(arr) + ["", "", "", "", ""])[:5]
+    raw_source = _clean_utm(arr[0]).lower()
+    return {
+        "utm_source":   SOURCE_NORMALIZE.get(raw_source, raw_source),
+        "utm_campaign": _clean_utm(arr[1]),
+        "utm_medium":   _clean_utm(arr[2]),
+        "utm_term":     _clean_utm(arr[3]),
+        "utm_content":  _clean_utm(arr[4]),
+    }
+
+
 def normalize_leads(raw_leads: list) -> list:
     """Converte leads brutos do SprintHub para o formato do pipeline."""
     leads = []
@@ -142,6 +187,8 @@ def normalize_leads(raw_leads: list) -> list:
         tags = lead.get("sh_status") or ""
         if isinstance(lead.get("tags"), list):
             tags = ",".join(lead["tags"])
+
+        utm = _parse_utm_array(lead)
 
         leads.append({
             "id":              lead.get("id"),
@@ -164,12 +211,12 @@ def normalize_leads(raw_leads: list) -> list:
             "tags":             tags,
             "stage":            lead.get("stage") or "",
             "points":           lead.get("points") or 0,
-            # Campos UTM mantidos para compatibilidade com o resto do pipeline (vazios se não houver)
-            "utm_source":       _get_field(lead, "utm_source", "utmSource"),
-            "utm_medium":       _get_field(lead, "utm_medium", "utmMedium"),
-            "utm_campaign":     _get_field(lead, "utm_campaign", "utmCampaign"),
-            "utm_content":      _get_field(lead, "utm_content", "utmContent"),
-            "utm_term":         _get_field(lead, "utm_term", "utmTerm"),
+            # UTMs extraídas do array createdByUtm do SprintHub
+            "utm_source":       utm["utm_source"],
+            "utm_medium":       utm["utm_medium"],
+            "utm_campaign":     utm["utm_campaign"],
+            "utm_content":      utm["utm_content"],
+            "utm_term":         utm["utm_term"],
         })
     return leads
 

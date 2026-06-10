@@ -2052,19 +2052,17 @@ function renderExecutivo() {
       if (r.source) filtCampsSource[r.campaign] = r.source;
     });
 
-  // ── Leads pagos: vêm das PLATAFORMAS (Meta "Leads do Website" + Google "Conversões").
-  // Os leads do CRM (SprintHub) não trazem UTM/origem, então a contagem de pagos é feita
-  // pelo que as plataformas reportam — fonte mais confiável disponível hoje.
-  let metaGasto = 0, metaLeadsSite = 0;
+  // ── Leads pagos: atribuídos pelo CRM via UTM (utm_source do SprintHub).
+  // Gasto vem das planilhas das plataformas; CPL = gasto / leads atribuídos no CRM.
+  let metaGasto = 0;
   (DATA.meta_ads.daily || []).filter(r => !datePred || datePred(r.data))
-    .forEach(r => { metaGasto += r.gasto || 0; metaLeadsSite += r.leads || 0; });
-
-  let googleGasto = 0, googleConvTot = 0;
+    .forEach(r => { metaGasto += r.gasto || 0; });
+  let googleGasto = 0;
   (DATA.google_ads.daily || []).filter(r => !datePred || datePred(r.data))
-    .forEach(r => { googleGasto += r.gasto || 0; googleConvTot += r.conversoes || 0; });
+    .forEach(r => { googleGasto += r.gasto || 0; });
 
-  const metaLeads   = Math.round(metaLeadsSite);
-  const googleLeads = Math.round(googleConvTot);
+  const metaLeads   = filtSources['metaads']   || 0;
+  const googleLeads = filtSources['googlecpc'] || 0;
   const metaCPL     = metaLeads   > 0 ? metaGasto   / metaLeads   : 0;
   const googleCPL   = googleLeads > 0 ? googleGasto / googleLeads : 0;
 

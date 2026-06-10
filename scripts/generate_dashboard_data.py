@@ -1209,19 +1209,18 @@ def build_relatorio(leads, crm, meta_agg, google_agg, utm_agg, meta_rows=None):
     mes_atual = agora.strftime("%Y-%m")
     mes_label = _label_mes(agora)
 
-    # ── Leads do mês ──────────────────────────────────────────────────────────
-    # Pagos vêm das PLATAFORMAS (Meta "Leads do Website" + Google "Conversões"),
-    # pois os leads do CRM (SprintHub) não trazem UTM/origem.
-    google_leads_mes = round(sum(r.get("conversoes", 0) for r in google_agg.get("daily", [])
-                                 if (r.get("data") or "").startswith(mes_atual)))
-    meta_leads_mes   = round(sum(r.get("leads", 0) for r in meta_agg.get("daily", [])
-                                 if (r.get("data") or "").startswith(mes_atual)))
-    pago_leads_mes   = google_leads_mes + meta_leads_mes
-    # Total de leads do mês = leads do CRM (SprintHub) criados no mês.
-    total_leads_mes  = sum(1 for l in leads
-                           if parse_date_to_month(l.get("criado_em")) == mes_atual)
-    organico_leads_mes = max(0, total_leads_mes - pago_leads_mes)
-    direto_leads_mes   = organico_leads_mes
+    # ── Leads do mês por source (atribuição via UTM do CRM/SprintHub) ──────────
+    mes_src = {}
+    for r in utm_agg.get("sources_monthly", []):
+        if r["mes"] == mes_atual:
+            mes_src[r["source"]] = r["total"]
+
+    google_leads_mes   = mes_src.get("googlecpc", 0)
+    meta_leads_mes     = mes_src.get("metaads", 0)
+    pago_leads_mes     = google_leads_mes + meta_leads_mes
+    total_leads_mes    = sum(mes_src.values())
+    organico_leads_mes = total_leads_mes - pago_leads_mes
+    direto_leads_mes   = mes_src.get("direto", 0)
 
     # ── Gasto e CPL do mês ───────────────────────────────────────────────────
     meta_gasto_mes   = sum(r.get("gasto", 0) for r in meta_agg.get("daily", [])
@@ -1279,14 +1278,14 @@ def build_relatorio(leads, crm, meta_agg, google_agg, utm_agg, meta_rows=None):
     mes_anterior = mes_ant_dt.strftime("%Y-%m")
     mes_ant_label = _label_mes(mes_ant_dt)
 
-    # Mês anterior — mesma lógica: pagos das plataformas, total do CRM.
-    ant_google = round(sum(r.get("conversoes", 0) for r in google_agg.get("daily", [])
-                           if (r.get("data") or "").startswith(mes_anterior)))
-    ant_meta   = round(sum(r.get("leads", 0) for r in meta_agg.get("daily", [])
-                           if (r.get("data") or "").startswith(mes_anterior)))
+    ant_src = {}
+    for r in utm_agg.get("sources_monthly", []):
+        if r["mes"] == mes_anterior:
+            ant_src[r["source"]] = r["total"]
+    ant_google = ant_src.get("googlecpc", 0)
+    ant_meta   = ant_src.get("metaads", 0)
     ant_pago   = ant_google + ant_meta
-    ant_total  = sum(1 for l in leads
-                     if parse_date_to_month(l.get("criado_em")) == mes_anterior)
+    ant_total  = sum(ant_src.values())
 
     ant_meta_gasto   = sum(r.get("gasto", 0) for r in meta_agg.get("daily", [])
                            if (r.get("data") or "").startswith(mes_anterior))
