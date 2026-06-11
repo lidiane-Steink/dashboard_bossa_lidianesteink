@@ -13,8 +13,11 @@ def run():
     print(f"Dashboard Marketing — {datetime.now().strftime('%d/%m/%Y %H:%M')}")
     print("=" * 50)
 
-    # SprintHub — leads + CRM (única fonte para o Ouro do Gege)
-    # Coletamos os leads UMA VEZ e reusamos a lista para deals (evita duplicar chamada).
+    # SprintHub — leads.
+    # IMPORTANTE: /leads retorna TODOS os contatos (WhatsApp, Instagram, forms...),
+    # não só leads de marketing. Por decisão do cliente, o dashboard conta apenas
+    # LEADS DE CAMPANHA = contatos com UTM (vieram de anúncio Meta/Google).
+    # Os contatos orgânicos (sem UTM) são descartados aqui.
     print("\n[1/6] SprintHub — leads")
     leads_raw = []
     try:
@@ -22,25 +25,22 @@ def run():
     except Exception as e:
         print(f"  ERRO coletando leads (parcial pode ter sido obtida): {e}")
 
-    # Mesmo que tenha parado no meio, salva o que conseguiu
     if leads_raw:
         try:
-            leads = sprinthub.normalize_leads(leads_raw)
+            todos = sprinthub.normalize_leads(leads_raw)
+            # Mantém só leads com UTM source (campanha). Sem UTM = orgânico/WhatsApp.
+            leads = [l for l in todos if (l.get("utm_source") or "").strip()]
+            print(f"  Leads de campanha (com UTM): {len(leads)} de {len(todos)} contatos totais")
             leads.sort(key=lambda x: x.get("criado_em") or "", reverse=True)
             writer.write_sheet("leads", leads)
         except Exception as e:
             print(f"  ERRO ao salvar leads: {e}")
 
-    print("\n[2/6] SprintHub — CRM (deals)")
-    if leads_raw:
-        try:
-            deals = sprinthub.get_deals_from_leads(leads_raw)
-            if deals:
-                writer.write_sheet("crm_deals", deals)
-        except Exception as e:
-            print(f"  ERRO SprintHub deals: {e}")
-    else:
-        print("  Pulado — sem leads coletados.")
+    # CRM / Oportunidades — DESABILITADO.
+    # O SprintHub não tem endpoint bulk de oportunidades; buscar contato a contato
+    # nos 14k+ contatos é inviável (lento + rate limit). O funil do CRM fica de fora
+    # por ora (decisão do cliente: focar em leads de campanha).
+    print("\n[2/6] SprintHub — CRM (deals): desabilitado (sem endpoint bulk)")
 
     # Google Analytics 4
     print("\n[3/6] Google Analytics 4")

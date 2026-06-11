@@ -52,7 +52,10 @@ def write_sheet(sheet_name, data, spreadsheet_id=None):
     values = df.values.tolist()
 
     worksheet.clear()
-    worksheet.update([headers] + values)
+    # value_input_option="RAW" evita que o Google Sheets reinterprete strings
+    # (ex: datas ISO viram formato local inconsistente MM/DD vs DD/MM, quebrando
+    # a atribuição por mês no dashboard). Grava exatamente o que mandamos.
+    worksheet.update([headers] + values, value_input_option="RAW")
 
     print(f"  Aba '{sheet_name}' atualizada: {len(values)} linhas gravadas.")
 
