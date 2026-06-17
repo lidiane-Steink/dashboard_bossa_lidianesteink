@@ -218,7 +218,29 @@ def normalize_leads(raw_leads: list) -> list:
             "utm_content":      utm["utm_content"],
             "utm_term":         utm["utm_term"],
         })
-    return leads
+
+    total_bruto = len(leads)
+
+    # 1) Filtra visitantes anônimos: o SprintHub cria um "lead" para cada visita ao
+    #    site (só com cidade por IP). Mantemos só quem tem contato real.
+    leads = [l for l in leads
+             if (l.get("nome") or l.get("telefone") or l.get("whatsapp") or l.get("email"))]
+    anonimos = total_bruto - len(leads)
+
+    # 2) Dedupe por contato (mesma pessoa em registros diferentes) — mantém o mais recente.
+    dedup = {}
+    for l in leads:
+        key = (str(l.get("whatsapp") or l.get("telefone") or l.get("email") or l.get("id"))
+               .strip().lower())
+        prev = dedup.get(key)
+        if prev is None or (l.get("criado_em") or "") > (prev.get("criado_em") or ""):
+            dedup[key] = l
+    leads_final = list(dedup.values())
+    duplicados = len(leads) - len(leads_final)
+
+    print(f"  Leads: {total_bruto} brutos → {anonimos} anônimos removidos, "
+          f"{duplicados} duplicados removidos → {len(leads_final)} leads reais.")
+    return leads_final
 
 
 def _get_opportunities(lead_id: int) -> list:
@@ -269,9 +291,9 @@ def get_deals_from_leads(leads: list) -> list:
                     "pipeline":         None,
                     "responsavel":      (opp.get("user") or {}).get("name"),
                     "motivo_perda":     opp.get("loss_reason"),
-                    "contato_nome":     lead.get("fullname"),
+                    "contato_nome":     lead.get("nome"),
                     "contato_email":    lead.get("email"),
-                    "contato_telefone": lead.get("phone"),
+                    "contato_telefone": lead.get("telefone") or lead.get("whatsapp"),
                     "em_espera":        False,
                 })
             done += 1

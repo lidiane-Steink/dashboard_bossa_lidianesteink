@@ -14,10 +14,10 @@ def run():
     print("=" * 50)
 
     # SprintHub — leads.
-    # IMPORTANTE: /leads retorna TODOS os contatos (WhatsApp, Instagram, forms...),
-    # não só leads de marketing. Por decisão do cliente, o dashboard conta apenas
-    # LEADS DE CAMPANHA = contatos com UTM (vieram de anúncio Meta/Google).
-    # Os contatos orgânicos (sem UTM) são descartados aqui.
+    # IMPORTANTE: /leads retorna TODOS os contatos, incluindo visitantes ANÔNIMOS do
+    # site (o script de rastreamento cria um "lead" por visita, só com cidade por IP).
+    # normalize_leads() já remove esses anônimos (mantém só quem tem nome/telefone/
+    # whatsapp/email) e deduplica por contato. Resultado = leads REAIS contatáveis.
     print("\n[1/6] SprintHub — leads")
     leads_raw = []
     try:
@@ -25,22 +25,27 @@ def run():
     except Exception as e:
         print(f"  ERRO coletando leads (parcial pode ter sido obtida): {e}")
 
+    leads = []
     if leads_raw:
         try:
-            todos = sprinthub.normalize_leads(leads_raw)
-            # Mantém só leads com UTM source (campanha). Sem UTM = orgânico/WhatsApp.
-            leads = [l for l in todos if (l.get("utm_source") or "").strip()]
-            print(f"  Leads de campanha (com UTM): {len(leads)} de {len(todos)} contatos totais")
+            leads = sprinthub.normalize_leads(leads_raw)
             leads.sort(key=lambda x: x.get("criado_em") or "", reverse=True)
             writer.write_sheet("leads", leads)
         except Exception as e:
             print(f"  ERRO ao salvar leads: {e}")
 
-    # CRM / Oportunidades — DESABILITADO.
-    # O SprintHub não tem endpoint bulk de oportunidades; buscar contato a contato
-    # nos 14k+ contatos é inviável (lento + rate limit). O funil do CRM fica de fora
-    # por ora (decisão do cliente: focar em leads de campanha).
-    print("\n[2/6] SprintHub — CRM (deals): desabilitado (sem endpoint bulk)")
+    # CRM / Oportunidades — agora viável: buscamos deals só dos leads REAIS (poucos),
+    # não dos 14k contatos. Cada lead = 1 chamada à API de oportunidades.
+    print("\n[2/6] SprintHub — CRM (deals)")
+    if leads:
+        try:
+            deals = sprinthub.get_deals_from_leads(leads)
+            if deals:
+                writer.write_sheet("crm_deals", deals)
+        except Exception as e:
+            print(f"  ERRO SprintHub deals: {e}")
+    else:
+        print("  Pulado — sem leads reais.")
 
     # Google Analytics 4
     print("\n[3/6] Google Analytics 4")
