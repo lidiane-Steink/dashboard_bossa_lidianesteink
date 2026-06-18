@@ -34,18 +34,12 @@ def run():
         except Exception as e:
             print(f"  ERRO ao salvar leads: {e}")
 
-    # CRM / Oportunidades — agora viável: buscamos deals só dos leads REAIS (poucos),
-    # não dos 14k contatos. Cada lead = 1 chamada à API de oportunidades.
-    print("\n[2/6] SprintHub — CRM (deals)")
-    if leads:
-        try:
-            deals = sprinthub.get_deals_from_leads(leads)
-            if deals:
-                writer.write_sheet("crm_deals", deals)
-        except Exception as e:
-            print(f"  ERRO SprintHub deals: {e}")
-    else:
-        print("  Pulado — sem leads reais.")
+    # CRM / Oportunidades — DESABILITADO temporariamente.
+    # A API tem rate limit de ~50 req / 30s. Buscar oportunidade lead-a-lead para
+    # milhares de leads contatáveis estouraria o limite e deixaria a coleta lenta.
+    # Prioridade atual: garantir a coleta COMPLETA dos leads. Reativar depois com
+    # paginação pausada (igual get_leads_raw) quando o funil do CRM for necessário.
+    print("\n[2/6] SprintHub — CRM (deals): desabilitado (rate limit — foco nos leads)")
 
     # Google Analytics 4
     print("\n[3/6] Google Analytics 4")

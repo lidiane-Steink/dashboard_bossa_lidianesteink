@@ -8,11 +8,13 @@ import config
 
 BASE_URL = "https://sprinthub-api-master.sprinthub.app"
 MAX_WORKERS = 6
-# API SprintHub limita ~30 por página com allFields=1, ~100 sem. Mantemos alto e
-# paramos quando a página vier curta (lógica abaixo).
 PAGE_SIZE = 200
 # Cap defensivo para evitar loop infinito em caso de bug
-MAX_PAGES = 500
+MAX_PAGES = 800
+# Rate limit do SprintHub (medido): ~50 requisições por janela de ~30s.
+# Pausamos a cada 45 páginas por 35s para a janela resetar e conseguir paginar tudo.
+RATE_LIMIT_PAGES = 45
+RATE_LIMIT_PAUSE = 35
 
 # Mapeamento crm_column ID (número) → nome da etapa do funil.
 # Preencha os IDs corretos após verificar no SprintHub:
@@ -43,29 +45,25 @@ def _resolve_stage(opp: dict) -> str:
     return STAGE_MAP.get(col_id, f"coluna_{col_id}") if col_id else "sem etapa"
 
 
-def _get_leads_page(page: int, max_retries: int = 5) -> dict:
-    """Busca uma página de leads. Retorna {} se falhar após retries (sinaliza fim para o caller)."""
+def _get_leads_page(page: int, max_retries: int = 6) -> dict:
+    """Busca uma página de leads. Em 401 (rate limit) espera a janela (~30s) resetar."""
     params = {**_base_params(), "allFields": "1", "page": page, "limit": PAGE_SIZE}
-    backoff = 3
     for attempt in range(max_retries):
         try:
             resp = requests.get(f"{BASE_URL}/leads", headers=_headers(), params=params, timeout=30)
-            # 401 = rate limit / token bloqueado temporariamente → espera e tenta de novo
             if resp.status_code == 401:
+                # Rate limit (50 req / ~30s). Espera a janela resetar e tenta de novo.
                 if attempt < max_retries - 1:
-                    print(f"    [WARN] 401 (rate limit) na pág {page}, aguardando {backoff}s (tentativa {attempt+2}/{max_retries})...")
-                    time.sleep(backoff)
-                    backoff = min(backoff * 2, 60)
+                    print(f"    [rate limit] 401 na pág {page} — aguardando {RATE_LIMIT_PAUSE}s p/ resetar...")
+                    time.sleep(RATE_LIMIT_PAUSE)
                     continue
-                print(f"    ERRO 401 persistente na pág {page} — desistindo dessa página.")
+                print(f"    ERRO 401 persistente na pág {page}.")
                 return {}
             resp.raise_for_status()
             return resp.json().get("data", {})
         except requests.RequestException as e:
             if attempt < max_retries - 1:
-                print(f"    [WARN] erro de rede na pág {page}: {e} — retentando em {backoff}s")
-                time.sleep(backoff)
-                backoff = min(backoff * 2, 60)
+                time.sleep(5)
                 continue
             print(f"    ERRO definitivo na pág {page}: {e}")
             return {}
@@ -88,38 +86,30 @@ def _get_field(lead: dict, *names) -> str:
 
 
 def get_leads_raw() -> list:
-    """Retorna leads no formato bruto do SprintHub (paginação até esgotar)."""
-    print("  Coletando leads do SprintHub...")
+    """Pagina TODOS os leads, pausando p/ respeitar o rate limit (50 req / ~30s)."""
+    print("  Coletando leads do SprintHub (com pausas p/ rate limit)...")
     all_leads = []
     page = 1
-    last_batch_size = 0
+    reqs_since_pause = 0
     while page <= MAX_PAGES:
+        # Pausa preventiva antes de bater o limite de 50 req/janela.
+        if reqs_since_pause >= RATE_LIMIT_PAGES:
+            print(f"    pausando {RATE_LIMIT_PAUSE}s p/ resetar rate limit "
+                  f"({len(all_leads)} leads até a pág {page-1})...")
+            time.sleep(RATE_LIMIT_PAUSE)
+            reqs_since_pause = 0
+
         data = _get_leads_page(page)
+        reqs_since_pause += 1
         batch = data.get("leads", [])
         if not batch:
             break
         all_leads.extend(batch)
-        total = data.get("total") or 0
-        # Log de progresso a cada 5 páginas para não poluir
-        if page == 1 or page % 5 == 0:
-            tag = f"/{total}" if total else ""
-            print(f"    pág {page}: +{len(batch)} leads → {len(all_leads)}{tag} no total")
-        # Critérios de parada (em ordem de prioridade):
-        # 1) total conhecido e já atingido
-        # 2) batch curto (menos que o anterior ou < 10) = última página
-        # 3) cap MAX_PAGES atingido
-        if total and len(all_leads) >= total:
-            break
-        if last_batch_size and len(batch) < last_batch_size and len(batch) < 10:
-            break
-        last_batch_size = len(batch)
+        if page % 25 == 0:
+            print(f"    pág {page}: {len(all_leads)} leads coletados...")
         page += 1
-        # Pausa maior a cada 20 páginas para evitar rate limit do SprintHub
-        if page % 20 == 0:
-            time.sleep(2.0)
-        else:
-            time.sleep(0.5)
-    print(f"  Total de leads coletados: {len(all_leads)}")
+        time.sleep(0.2)
+    print(f"  Total de leads coletados: {len(all_leads)} (em {page-1} páginas)")
     return all_leads
 
 
